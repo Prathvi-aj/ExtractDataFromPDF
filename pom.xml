@@ -3,7 +3,25 @@
   <groupId>ReadPDF</groupId>
   <artifactId>ReadPDF</artifactId>
   <version>0.0.1-SNAPSHOT</version>
+  
+  
+  <repositories>
+    <repository>
+        <id>com.e-iceblue</id>
+        <name>e-iceblue</name>
+        <url>https://repo.e-iceblue.com/nexus/content/groups/public/</url>
+    </repository>
+</repositories>
+
+
+  
 <dependencies>
+    <dependency>
+        <groupId>e-iceblue</groupId>
+        <artifactId>spire.pdf</artifactId>
+        <version>4.10.2</version>
+    </dependency>
+
 <!-- https://mvnrepository.com/artifact/org.apache.pdfbox/pdfbox -->
 <dependency>
     <groupId>org.apache.pdfbox</groupId>

@@ -2,12 +2,14 @@ package readPDF;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.*;
 
+import org.apache.pdfbox.multipdf.PageExtractor;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 
@@ -15,6 +17,9 @@ import com.codoid.products.exception.FilloException;
 import com.codoid.products.fillo.Connection;
 import com.codoid.products.fillo.Fillo;
 import com.codoid.products.fillo.Recordset;
+import com.spire.pdf.PdfDocument;
+import com.spire.pdf.utilities.PdfTable;
+import com.spire.pdf.utilities.PdfTableExtractor;
 
 
 public class ReadPdfUpdateExcel {
@@ -34,7 +39,7 @@ public class ReadPdfUpdateExcel {
 			recordset=con.executeQuery("select * from Sheet1");
 			
 			try {
-			con.createTable("Invoice_Detail",new String[] {"SN","Order_Number","Invoice_Number","Buyer_Name_Address","Order_Date","Invoice_Date"});
+			con.createTable("Invoice_Detail",new String[] {"SN","Order_Number","Invoice_Number","Buyer_Name_Address","Order_Date","Invoice_Date","PRODUCT_TITLE","HSN","TAXABLE_VALUE","DISCOUNT","TAX_RATE_AND_CATEGORY"});
 			}catch(Exception e) {
 				System.out.println("Sheet already present.");
 			}
@@ -53,6 +58,8 @@ public class ReadPdfUpdateExcel {
 		getPDFFromURL(invoiceLink.get(i),i);
 		ReadPDFandUpdateexcel("invoice"+i+".pdf",i);
 		}
+		
+		
 		
 		
 		
@@ -92,7 +99,7 @@ public class ReadPdfUpdateExcel {
 	}
 	
 	
-	public static void ReadPDFandUpdateexcel(String pdfName,int i) {
+	public static void ReadPDFandUpdateexcel(String pdfName,int n) {
 		
 		
 		try {
@@ -100,6 +107,10 @@ public class ReadPdfUpdateExcel {
 		PDDocument document =PDDocument.load(new File(System.getProperty("user.dir")+"/"+pdfName));
 		PDFTextStripper stripper = new PDFTextStripper();
 		String text=stripper.getText(document);
+		
+		
+		
+		
 		//System.out.println(text+"  ++");
 		document.close();
 		
@@ -118,7 +129,45 @@ public class ReadPdfUpdateExcel {
 		String user_name_address=text1.substring(text1.indexOf("ST")+3,text1.indexOf("ID"));
 		String order_date=text1.substring(text1.indexOf("ID")+3,text1.indexOf("OD"));
 		String invoice_date=text1.substring(text1.indexOf("OD")+3,text1.indexOf("SN"));
-		String insert_query="insert into invoice_detail(SN,Order_Number,Invoice_Number,Buyer_Name_Address,Order_Date,Invoice_Date) values('"+i+"','"+order_no+"','"+invoice_no+"','"+user_name_address+"','"+order_date+"','"+invoice_date+"')";
+		
+		
+		PdfDocument pdf = new PdfDocument("invoice1.pdf");
+        PdfTableExtractor extractor = new PdfTableExtractor(pdf);
+        String merge="";
+        
+        ArrayList<String> tableDataField=new ArrayList<>();
+        HashMap<String,String> tableData=new HashMap<>();
+        for (int pageIndex = 0; pageIndex < pdf.getPages().getCount(); pageIndex++) {
+            PdfTable[] tableLists = extractor.extractTable(pageIndex);
+             
+            if (tableLists != null && tableLists.length > 0) {
+                for (PdfTable table : tableLists) {
+                    for (int i = 0; i < 1; i++) {
+                        for (int j = 0; j < table.getColumnCount(); j++) {
+                        	
+                        	tableDataField.add(table.getText(i, j));
+                            
+                        }
+                    }
+                    for (int i = 1; i < 2; i++) {
+                        for (int j = 0; j < table.getColumnCount(); j++) {
+                        	tableData.put(tableDataField.get(j),table.getText(i, j));
+                        }
+                    }
+                }
+            }
+        }
+        
+        //System.out.println(tableData);
+ 
+		
+		
+		
+		
+		
+		
+		
+		String insert_query="insert into invoice_detail(SN,Order_Number,Invoice_Number,Buyer_Name_Address,Order_Date,Invoice_Date,PRODUCT_TITLE,HSN,TAXABLE_VALUE,DISCOUNT,TAX_RATE_AND_CATEGORY) values('"+n+"','"+order_no+"','"+invoice_no+"','"+user_name_address+"','"+order_date+"','"+invoice_date+"','"+tableData.get("Description")+"','"+tableData.get("HSN")+"','"+(tableData.get("Taxes")).substring(16)+"','"+tableData.get("Discount")+"','"+(tableData.get("Taxes")).substring(0,5)+"')";
 		//System.out.println(insert_query);
 		con.executeUpdate(insert_query);
 		
@@ -128,6 +177,12 @@ public class ReadPdfUpdateExcel {
 		
 		
 		}	
+	
+
+	
+	
+	
+	
 	
 	
 }
