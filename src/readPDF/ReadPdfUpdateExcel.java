@@ -2,14 +2,12 @@ package readPDF;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.*;
 
-import org.apache.pdfbox.multipdf.PageExtractor;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 
@@ -39,7 +37,7 @@ public class ReadPdfUpdateExcel {
 			recordset=con.executeQuery("select * from Sheet1");
 			
 			try {
-			con.createTable("Invoice_Detail",new String[] {"SN","Order_Number","Invoice_Number","Buyer_Name_Address","Order_Date","Invoice_Date","PRODUCT_TITLE","HSN","TAXABLE_VALUE","DISCOUNT","TAX_RATE_AND_CATEGORY"});
+			con.createTable("Invoice_Detail",new String[] {"SN","Order_Number","Invoice_Number","Buyer_Name_Address","Order_Date","Invoice_Date","PRODUCT_TITLE","HSN","TAXABLE_VALUE","DISCOUNT","TAX_RATE_AND_CATEGORY","TOTAL"});
 			}catch(Exception e) {
 				System.out.println("Sheet already present.");
 			}
@@ -53,12 +51,18 @@ public class ReadPdfUpdateExcel {
 			e.printStackTrace();
 		}
 		
-		
-		for(int i=1;i<invoiceLink.size();i++) {
+		int i=1;
+		for(i=1;i<invoiceLink.size();i++) {
 		getPDFFromURL(invoiceLink.get(i),i);
 		ReadPDFandUpdateexcel("invoice"+i+".pdf",i);
+		
 		}
 		
+		ReadPDFandUpdateexcel("jorwp231840.pdf",++i);
+		ReadPDFandUpdateexcel("jorwp231864.pdf",++i);
+		ReadPDFandUpdateexcel("jorwp231884.pdf",++i);
+		
+	
 		
 		
 		
@@ -99,6 +103,7 @@ public class ReadPdfUpdateExcel {
 	}
 	
 	
+	
 	public static void ReadPDFandUpdateexcel(String pdfName,int n) {
 		
 		
@@ -131,43 +136,83 @@ public class ReadPdfUpdateExcel {
 		String invoice_date=text1.substring(text1.indexOf("OD")+3,text1.indexOf("SN"));
 		
 		
-		PdfDocument pdf = new PdfDocument("invoice1.pdf");
+		PdfDocument pdf = new PdfDocument(System.getProperty("user.dir")+"/"+pdfName);
         PdfTableExtractor extractor = new PdfTableExtractor(pdf);
-        String merge="";
         
         ArrayList<String> tableDataField=new ArrayList<>();
-        HashMap<String,String> tableData=new HashMap<>();
+        HashMap<Integer,HashMap<String,String>> tableData=new HashMap<>();
+        
         for (int pageIndex = 0; pageIndex < pdf.getPages().getCount(); pageIndex++) {
             PdfTable[] tableLists = extractor.extractTable(pageIndex);
-             
             if (tableLists != null && tableLists.length > 0) {
                 for (PdfTable table : tableLists) {
-                    for (int i = 0; i < 1; i++) {
+                    for (int i = 0; i < 3; i++) {
+                    	if(i==0) {
                         for (int j = 0; j < table.getColumnCount(); j++) {
                         	
                         	tableDataField.add(table.getText(i, j));
                             
                         }
-                    }
-                    for (int i = 1; i < 2; i++) {
+                    	}
+                    	
+                        if(i!=0) {
+                        	HashMap<String,String> tablecolumne=new HashMap<>();
+                            
                         for (int j = 0; j < table.getColumnCount(); j++) {
-                        	tableData.put(tableDataField.get(j),table.getText(i, j));
+                        	
+                        	tablecolumne.put(tableDataField.get(j),table.getText(i, j));
+                        	
+                        	
                         }
+                        tableData.put(i,tablecolumne);
+                        }
+                    
                     }
+                   
+                    
                 }
             }
         }
         
-        //System.out.println(tableData);
+       // System.out.println(tableData);
  
 		
 		
 		
+        HashMap<String , String> tableData1=new HashMap<>();
+        HashMap<String , String> tableData2=new HashMap<>();
 		
+        String insert_query="";
+        double tax=0;
+		for(int k=1;k<=tableData.size();k++) {
+			
+			
+			
+			
+			if(k==1) {
+				tableData1=tableData.get(k);
+				insert_query="insert into invoice_detail(SN,Order_Number,Invoice_Number,Buyer_Name_Address,Order_Date,Invoice_Date,PRODUCT_TITLE,HSN,TAXABLE_VALUE,DISCOUNT,TAX_RATE_AND_CATEGORY,TOTAL) values('"+n+"','"+order_no+"','"+invoice_no+"','"+user_name_address+"','"+order_date+"','"+invoice_date+"','"+tableData1.get("Description")+"','"+tableData1.get("HSN")+"','"+(tableData1.get("Taxes")).substring(16)+"','"+tableData1.get("Discount")+"','"+(tableData1.get("Taxes")).substring(0,5)+"','"+tableData1.get("Total")+"')";
+				
+			}
+			else if (k==2 && !(tableData.get(k).get("HSN").equals(""))){
+				tableData2=tableData.get(k);
+				
+				for(Map.Entry<String , String> e: tableData2.entrySet()) {
+					if(e.getKey().startsWith("Taxable"))
+					tax+=Double.parseDouble(e.getValue().substring(3));
+				}
+				for(Map.Entry<String , String> e: tableData1.entrySet()) {
+					if(e.getKey().startsWith("Taxable"))
+					tax+=Double.parseDouble(e.getValue().substring(3));
+				}
+				double total=Double.parseDouble((tableData1.get("Total")).substring(3))+Double.parseDouble((tableData2.get("Total")).substring(3));
+				//System.out.println(tax);
+				insert_query="insert into invoice_detail(SN,Order_Number,Invoice_Number,Buyer_Name_Address,Order_Date,Invoice_Date,PRODUCT_TITLE,HSN,TAXABLE_VALUE,DISCOUNT,TAX_RATE_AND_CATEGORY,TOTAL) values('"+n+"','"+order_no+"','"+invoice_no+"','"+user_name_address+"','"+order_date+"','"+invoice_date+"','"+tableData1.get("Description")+"','"+tableData1.get("HSN")+"','"+tax+"','"+tableData1.get("Discount")+"','"+(tableData1.get("Taxes")).substring(0,5)+"','"+total+"')";
+				
+			}
+				
+		}
 		
-		
-		
-		String insert_query="insert into invoice_detail(SN,Order_Number,Invoice_Number,Buyer_Name_Address,Order_Date,Invoice_Date,PRODUCT_TITLE,HSN,TAXABLE_VALUE,DISCOUNT,TAX_RATE_AND_CATEGORY) values('"+n+"','"+order_no+"','"+invoice_no+"','"+user_name_address+"','"+order_date+"','"+invoice_date+"','"+tableData.get("Description")+"','"+tableData.get("HSN")+"','"+(tableData.get("Taxes")).substring(16)+"','"+tableData.get("Discount")+"','"+(tableData.get("Taxes")).substring(0,5)+"')";
 		//System.out.println(insert_query);
 		con.executeUpdate(insert_query);
 		
